@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Twilio Pro Dialer v2</title>
+    <script src="{{ url_for('static', filename='twilio.min.js') }}"></script>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #121212; color: white; display: flex; gap: 30px; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        .phone-container { background: #1e1e1e; padding: 30px; border-radius: 30px; border: 3px solid #333; width: 320px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .display { background: #000; padding: 15px; border-radius: 10px; margin-bottom: 20px; text-align: center; border: 1px solid #444; }
+        #status-light { width: 10px; height: 10px; background: #555; border-radius: 50%; display: inline-block; margin-right: 8px; }
+        .num-view { font-size: 24px; color: #0f0; font-family: monospace; letter-spacing: 2px; height: 30px; }
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .keypad button { background: #333; border: none; color: white; padding: 15px; font-size: 20px; border-radius: 10px; cursor: pointer; }
+        .actions { display: flex; flex-direction: column; gap: 10px; }
+        .btn { padding: 15px; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s; }
+        .btn-call { background: #28a745; color: white; }
+        .btn-hangup { background: #dc3545; color: white; display: none; }
+        .btn-mute { background: #6c757d; color: white; display: none; }
+        .log-panel { background: #1e1e1e; padding: 20px; border-radius: 20px; width: 300px; border: 1px solid #333; height: 420px; overflow-y: auto; }
+        table { width: 100%; font-size: 14px; border-collapse: collapse; }
+        td { padding: 10px 0; border-bottom: 1px solid #333; color: #aaa; }
+    </style>
+</head>
+<body>
+
+<div class="phone-container">
+    <div class="display">
+        <div style="font-size: 10px; color: #888; margin-bottom: 5px; text-transform: uppercase;">
+            <span id="status-light"></span> <span id="status-text">OFFLINE</span>
+        </div>
+        <div class="num-view" id="display-num">+18003310500</div>
+    </div>
+
+    <div class="keypad">
+        <button onclick="press('1')">1</button><button onclick="press('2')">2</button><button onclick="press('3')">3</button>
+        <button onclick="press('4')">4</button><button onclick="press('5')">5</button><button onclick="press('6')">6</button>
+        <button onclick="press('7')">7</button><button onclick="press('8')">8</button><button onclick="press('9')">9</button>
+        <button onclick="clr()" style="color:#ff4444">C</button><button onclick="press('0')">0</button><button onclick="press('+')">+</button>
+    </div>
+
+    <div class="actions">
+        <button id="call-btn" class="btn btn-call" onclick="makeCall()">START CALL</button>
+        <button id="mute-btn" class="btn btn-mute" onclick="toggleMute()">MUTE</button>
+        <button id="hangup-btn" class="btn btn-hangup" onclick="hangUp()">HANG UP</button>
+    </div>
+</div>
+
+<div class="log-panel">
+    <h3 style="margin-top:0">Call History</h3>
+    <table><tbody id="history-body"></tbody></table>
+</div>
+
+<script>
+    let device;
+    let activeCall = null;
+    let currentNum = "+18003310500";
+
+    function press(n) { if (currentNum === "+18003310500") currentNum = ""; currentNum += n; document.getElementById('display-num').innerText = currentNum; }
+    function clr() { currentNum = ""; document.getElementById('display-num').innerText = "0"; }
+
+    async function init() {
+        const res = await fetch('./token');
+        const data = await res.json();
+        const VoiceSDK = (window.Twilio && Twilio.Voice) ? Twilio.Voice : Twilio;
+        
+        device = new VoiceSDK.Device(data.token, { logLevel: 1 });
+        device.on('registered', () => {
+            document.getElementById('status-light').style.background = '#0f0';
+            document.getElementById('status-text').innerText = 'READY';
+        });
+        device.register();
+    }
+
+    async function makeCall() {
+        activeCall = await device.connect({ params: { To: currentNum } });
+        
+        document.getElementById('call-btn').style.display = 'none';
+        document.getElementById('hangup-btn').style.display = 'block';
+        document.getElementById('mute-btn').style.display = 'block';
+
+        activeCall.on('accept', () => { document.getElementById('status-text').innerText = 'ON CALL'; });
+        activeCall.on('disconnect', () => { resetUI(); updateLogs(); });
+    }
+
+    function toggleMute() {
+        const muted = activeCall.isMuted();
+        activeCall.mute(!muted);
+        document.getElementById('mute-btn').innerText = muted ? "MUTE" : "UNMUTE";
+        document.getElementById('mute-btn').style.background = muted ? "#6c757d" : "#007bff";
+    }
+
+    function hangUp() { device.disconnectAll(); resetUI(); }
+
+    function resetUI() {
+        document.getElementById('call-btn').style.display = 'block';
+        document.getElementById('hangup-btn').style.display = 'none';
+        document.getElementById('mute-btn').style.display = 'none';
+        document.getElementById('status-text').innerText = 'READY';
+    }
+
+    async function updateLogs() {
+        const res = await fetch('/logs');
+        const data = await res.json();
+        document.getElementById('history-body').innerHTML = data.reverse().map(l => `<tr><td>To: ${l.to}</td><td>[Done]</td></tr>`).join('');
+    }
+
+    window.onload = init;
+</script>
+</body>
+</html>
