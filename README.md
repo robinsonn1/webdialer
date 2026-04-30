@@ -2,6 +2,9 @@
 
 A browser-based VoIP phone built with Python (Flask) and Twilio Voice SDK.
 
+<img width="812" height="557" alt="image" src="https://github.com/user-attachments/assets/e3a42de0-9b27-45fd-94a0-10099dd7416b" />
+
+
 ## Features
 - Outgoing calls via WebRTC.
 - Automated Call Recording.
