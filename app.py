@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, Response
 from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VoiceGrant
 from twilio.twiml.voice_response import VoiceResponse
@@ -27,6 +27,7 @@ def get_token():
     try:
         identity = 'web_user_rnavarro'
         token = AccessToken(ACCOUNT_SID, API_KEY, API_SECRET, identity=identity)
+        
         # Outgoing permission
         voice_grant = VoiceGrant(outgoing_application_sid=TWIML_APP_SID)
         token.add_grant(voice_grant)
@@ -50,11 +51,15 @@ def voice():
     else:
         response.say("No number provided.")
         
-    return str(response), 200, {'Content-Type': 'text/xml'}
+    # Return cleanly enforcing XML mimetype & explicitly inject ngrok bypass headers
+    res = Response(str(response), mimetype='text/xml')
+    res.headers["ngrok-skip-browser-warning"] = "true"
+    return res
 
 @app.route("/logs", methods=['GET'])
 def get_logs():
     return jsonify(call_history)
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    # Added host='0.0.0.0' to ensure ngrok tunnels smoothly to localhost
+    app.run(debug=True, host='0.0.0.0', port=8080)
