@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Compact Twilio Sandbox</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    
     <script type="text/javascript" src="{{ url_for('static', filename='twilio.min.js') }}"></script>
-    
     <style>
         .console-log { font-family: 'Courier New', Courier, monospace; }
     </style>
@@ -17,7 +15,7 @@
     <header class="bg-slate-950 border-b border-slate-800 px-4 py-2 flex justify-between items-center shrink-0">
         <div>
             <h1 class="text-base font-bold text-sky-400 tracking-tight flex items-center gap-1.5">
-                Twilio Web Dialer <span class="text-[10px] px-1.5 py-0.2 bg-slate-800 text-slate-400 rounded border border-slate-700 font-normal">Sandbox</span>
+                Twilio Web Dialer <span class="text-[10px] px-1.5 py-0.2 bg-slate-800 text-slate-400 rounded border border-slate-700 font-normal">Sandbox v1.1</span>
             </h1>
         </div>
         <div class="flex gap-4 text-[11px] font-mono">
@@ -87,9 +85,12 @@
                     <span class="text-slate-500">Status Trunk:</span>
                     <span id="call-status" class="font-bold text-amber-400 uppercase tracking-wide">Verifying Local Assets...</span>
                 </div>
-                <div class="grid grid-cols-2 gap-2">
+                <div class="grid grid-cols-3 gap-1.5">
                     <button id="btn-dial" disabled onclick="startTestCall()" class="bg-emerald-600 opacity-40 text-white font-bold py-2 rounded cursor-pointer transition-all">
-                        Dial Line
+                        Dial
+                    </button>
+                    <button id="btn-mute" disabled onclick="toggleMuteState()" class="bg-slate-600 opacity-40 cursor-not-allowed text-white font-bold py-2 rounded">
+                        Mute
                     </button>
                     <button id="btn-hangup" onclick="endTestCall()" disabled class="bg-rose-700 opacity-40 cursor-not-allowed text-white font-bold py-2 rounded">
                         Hang Up
@@ -99,7 +100,6 @@
         </section>
 
         <section class="col-span-8 grid grid-rows-12 gap-3 min-h-0 overflow-hidden">
-            
             <div class="row-span-5 bg-slate-800/80 p-3 rounded-lg border border-slate-700/60 flex flex-col min-h-0">
                 <div class="flex justify-between items-center mb-1 shrink-0">
                     <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Device Telemetry Stream</span>
@@ -117,7 +117,7 @@
                         <thead class="bg-slate-900 text-slate-400 uppercase text-[9px] sticky top-0 border-b border-slate-800">
                             <tr>
                                 <th class="px-2 py-1.5">Timestamp (CT)</th>
-                                <th class="px-2 py-1.5">Target</th>
+                                <th class="px-2 py-1.5">Target Info</th>
                                 <th class="px-2 py-1.5">Duration</th>
                                 <th class="px-2 py-1.5">Log Status</th>
                             </tr>
@@ -143,12 +143,11 @@
         let liveTimerInterval = null;
         let activeCallSeconds = 0;
         let isNumberValidE164 = false;
+        let isCallActive = false;
 
-        // 1. Multi-Timezone Synchronized Clock Module
         function runClocks() {
             const now = new Date();
             const timeConfig = (zone) => ({ timeZone: zone, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-            
             document.getElementById('clock-pst').innerText = new Intl.DateTimeFormat('en-US', timeConfig('America/Los_Angeles')).format(now) + " PST";
             document.getElementById('clock-ct').innerText = new Intl.DateTimeFormat('en-US', timeConfig('America/Chicago')).format(now) + " CT";
             document.getElementById('clock-bog').innerText = new Intl.DateTimeFormat('en-US', timeConfig('America/Bogota')).format(now) + " COT";
@@ -156,10 +155,8 @@
         setInterval(runClocks, 1000);
         runClocks();
 
-        // 2. Safe Local File Polling Mechanism
         window.onload = () => { 
             let checkAttempts = 0;
-            
             function waitForLocalSDK() {
                 if (typeof Twilio !== 'undefined') {
                     logToConsole("[SYSTEM] Local script loaded successfully. Establishing capability token context...");
@@ -177,22 +174,15 @@
             waitForLocalSDK();
         }
 
-        // 3. Initialize Twilio Device Client via /token Endpoint
         async function initTwilioDevice() {
             logToConsole("[DEVICE] Querying server app instance for generation parameters...");
             try {
                 const response = await fetch('/token');
                 const data = await response.json();
-                
                 if (data.error) throw new Error(data.error);
 
-                // Setup Twilio Device Object Instantiation
-                device = new Twilio.Device(data.token, {
-                    logLevel: 1,
-                    edge: 'ashburn'
-                });
+                device = new Twilio.Device(data.token, { logLevel: 1, edge: 'ashburn' });
 
-                // Device Registration State Listeners
                 device.on('registered', () => {
                     logToConsole("[DEVICE] Authentication complete. Audio engine operational.", "success");
                     document.getElementById('call-status').innerText = "Ready";
@@ -205,33 +195,74 @@
                 });
 
                 device.register();
-
             } catch (err) {
                 logToConsole(`[FATAL] Capability validation pipeline broken: ${err.message}`, "error");
             }
         }
 
-        // 4. Micro Keypad Interaction Engine
         function pressKey(char) {
-            const el = document.getElementById('phone-number');
-            if (el.value === "" && !['+', '*', '#'].includes(char)) el.value = "+";
-            el.value += char;
-            validateAndLookupNumber();
+            if (!isCallActive) {
+                const el = document.getElementById('phone-number');
+                if (el.value === "" && !['+', '*', '#'].includes(char)) el.value = "+";
+                el.value += char;
+                validateAndLookupNumber();
+            } else {
+                transmitLiveDTMF(char);
+            }
+        }
+
+        async function transmitLiveDTMF(char) {
+            if (activeConnection) {
+                // Core fix: using the active call instance to pipe DTMF audio directly
+                activeConnection.sendDigits(char);
+                logToConsole(`[DTMF] Digit Tone [ ${char} ] streamed down active connection trunk.`);
+                
+                if (localCallHistory.length > 0 && localCallHistory[0].status === "Active") {
+                    localCallHistory[0].dtmf.push(char);
+                    renderTable();
+                }
+
+                await fetch('/dtmf-log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ digit: char })
+                });
+            }
+        }
+
+        function toggleMuteState() {
+            if (!activeConnection) return;
+            const currentMute = activeConnection.isMuted();
+            activeConnection.mute(!currentMute);
+            
+            const btn = document.getElementById('btn-mute');
+            if (!currentMute) {
+                btn.innerText = "Unmute";
+                btn.classList.replace('bg-slate-600', 'bg-sky-600');
+                logToConsole("[AUDIO] Microphone channel muted locally.");
+            } else {
+                btn.innerText = "Mute";
+                btn.classList.replace('bg-sky-600', 'bg-slate-600');
+                logToConsole("[AUDIO] Microphone channel live unmuted.");
+            }
         }
 
         function clearInputField() {
-            document.getElementById('phone-number').value = "";
-            validateAndLookupNumber();
-            logToConsole("[UI] Target field cleared.");
+            if (!isCallActive) {
+                document.getElementById('phone-number').value = "";
+                validateAndLookupNumber();
+                logToConsole("[UI] Target field cleared.");
+            }
         }
 
         function setTestNumber(num) {
-            document.getElementById('phone-number').value = num;
-            validateAndLookupNumber();
-            logToConsole(`[UI] Loaded Preset: ${num}`);
+            if (!isCallActive) {
+                document.getElementById('phone-number').value = num;
+                validateAndLookupNumber();
+                logToConsole(`[UI] Loaded Preset: ${num}`);
+            }
         }
 
-        // 5. E.164 Structural String Checking
         function validateAndLookupNumber() {
             const input = document.getElementById('phone-number').value.trim();
             const msg = document.getElementById('validation-msg');
@@ -255,11 +286,9 @@
             else if (input.startsWith("+52")) country = "Mexico (+52)";
             else if (input.startsWith("+57")) country = "Colombia (+57)";
             else if (input.startsWith("+")) country = "International Rule";
-
             meta.innerText = `Country: ${country}`;
         }
 
-        // 6. Console System Logger Helper
         function logToConsole(message, type = 'info') {
             const consoleEl = document.getElementById('debug-console');
             const line = document.createElement('div');
@@ -277,9 +306,7 @@
             document.getElementById('debug-console').innerHTML = '<div class="text-slate-500">[SYSTEM] Logs flushed.</div>';
         }
 
-        // ==========================================
-        // 7. WEBRTC LIVE SIGNAL DIAL HOOKS
-        // ==========================================
+        // Core fix: assigning listeners directly onto the returned synchronous Call instance
         async function startTestCall() {
             const num = document.getElementById('phone-number').value;
             if (!num || !device) return;
@@ -290,25 +317,27 @@
             document.getElementById('btn-dial').classList.add('opacity-40');
 
             logToConsole(`[WebRTC Engine] Opening signaling tunnel to Twilio framework gateway for: ${num}`);
-
+            
             try {
-                // Starts an encrypted WebRTC audio channel stream.
-                activeConnection = await device.connect({ 
-                    params: { To: num } 
-                });
-
-                // Connection Handshakes
+                // Capture the returned Call object synchronously
+                activeConnection = await device.connect({ params: { To: num } });
+                
+                // Bind listeners straight to this call instance
                 activeConnection.on('accept', () => {
+                    isCallActive = true;
                     logToConsole("[SIGNAL] Remote connection channel opened safely. Line active.", "success");
+                    
                     document.getElementById('call-status').innerText = "In Flight";
                     document.getElementById('call-status').className = "font-bold text-emerald-400 uppercase tracking-wide";
                     document.getElementById('btn-hangup').disabled = false;
                     document.getElementById('btn-hangup').classList.remove('opacity-40', 'cursor-not-allowed');
+                    
+                    document.getElementById('btn-mute').disabled = false;
+                    document.getElementById('btn-mute').classList.remove('opacity-40', 'cursor-not-allowed');
 
-                    // Fire real-time table counter metrics loops
                     activeCallSeconds = 0;
                     const ctTimestamp = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', hour12: false }).split(', ')[1];
-                    localCallHistory.unshift({ timestamp: ctTimestamp, target: num, duration: "0s", status: "Active" });
+                    localCallHistory.unshift({ timestamp: ctTimestamp, target: num, duration: "0s", status: "Active", dtmf: [] });
                     renderTable();
 
                     liveTimerInterval = setInterval(() => {
@@ -322,9 +351,9 @@
                     logToConsole("[SIGNAL] Connection torn down cleanly by remote endpoint target session.");
                     resetCallStateUI();
                 });
-
+                
             } catch (err) {
-                logToConsole(`[SIGNAL ABORT] WebRTC pipeline failure exception: ${err.message}`, "error");
+                logToConsole(`[SIGNAL ABORT] Call configuration error: ${err.message}`, "error");
                 resetCallStateUI();
             }
         }
@@ -339,16 +368,25 @@
 
         function resetCallStateUI() {
             clearInterval(liveTimerInterval);
+            isCallActive = false;
+            
             if (localCallHistory.length > 0 && localCallHistory[0].status === "Active") {
                 localCallHistory[0].status = "Finished";
             }
 
             document.getElementById('call-status').innerText = "Ready";
             document.getElementById('call-status').className = "font-bold text-emerald-400 uppercase tracking-wide";
+            
             document.getElementById('btn-dial').disabled = false;
             document.getElementById('btn-dial').classList.remove('opacity-40');
+            
             document.getElementById('btn-hangup').disabled = true;
             document.getElementById('btn-hangup').classList.add('opacity-40', 'cursor-not-allowed');
+
+            const btnMute = document.getElementById('btn-mute');
+            btnMute.innerText = "Mute";
+            btnMute.disabled = true;
+            btnMute.className = "bg-slate-600 opacity-40 cursor-not-allowed text-white font-bold py-2 rounded";
 
             renderTable();
             pullBackendLogs(); 
@@ -377,14 +415,21 @@
 
             localCallHistory.forEach(item => {
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-800/30 border-b border-slate-900/50";
-                const statusStyle = item.status === "Active" ? "text-emerald-400 font-bold" : "text-slate-500";
+                tr.className = "hover:bg-slate-800/30 border-b border-slate-900/50 text-[11px]";
+                const statusStyle = item.status === "Active" ? "text-emerald-400 font-bold animate-pulse" : "text-slate-500";
                 
+                const dtmfSection = item.dtmf && item.dtmf.length > 0 
+                    ? `<div class="text-[9px] text-amber-400 font-sans mt-0.5">DTMF Sent: [ ${item.dtmf.join(', ')} ]</div>` 
+                    : '';
+
                 tr.innerHTML = `
-                    <td class="px-2 py-1 text-slate-400">${item.timestamp}</td>
-                    <td class="px-2 py-1 text-sky-400 font-bold tracking-wide">${item.target}</td>
-                    <td class="px-2 py-1 text-amber-300 font-semibold">${item.duration}</td>
-                    <td class="px-2 py-1 ${statusStyle}">${item.status}</td>
+                    <td class="px-2 py-1.5 text-slate-400">${item.timestamp}</td>
+                    <td class="px-2 py-1.5 text-sky-400 font-bold tracking-wide">
+                        ${item.target}
+                        ${dtmfSection}
+                    </td>
+                    <td class="px-2 py-1.5 text-amber-300 font-semibold">${item.duration}</td>
+                    <td class="px-2 py-1.5 ${statusStyle}">${item.status}</td>
                 `;
                 tbody.appendChild(tr);
             });

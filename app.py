@@ -42,8 +42,8 @@ def voice():
     to_number = request.form.get('To')
 
     if to_number:
-        # Save to log
-        call_history.append({"to": to_number, "status": "Initiated"})
+        # Save to log with placeholder string for DTMF telemetry
+        call_history.append({"to": to_number, "status": "Initiated", "dtmf": ""})
         
         # Dial with recording enabled
         dial = response.dial(caller_id=TWILIO_NUMBER, record='record-from-answer')
@@ -56,10 +56,24 @@ def voice():
     res.headers["ngrok-skip-browser-warning"] = "true"
     return res
 
+@app.route("/dtmf-log", methods=['POST'])
+def log_dtmf():
+    """Appends live transmitted DTMF digits to the active transaction history block."""
+    data = request.json or {}
+    digit = data.get("digit")
+    
+    if digit and call_history:
+        latest_call = call_history[-1]
+        if not latest_call.get("dtmf"):
+            latest_call["dtmf"] = str(digit)
+        else:
+            latest_call["dtmf"] += f", {digit}"
+        return jsonify(success=True)
+    return jsonify(success=False), 400
+
 @app.route("/logs", methods=['GET'])
 def get_logs():
     return jsonify(call_history)
 
 if __name__ == "__main__":
-    # Added host='0.0.0.0' to ensure ngrok tunnels smoothly to localhost
     app.run(debug=True, host='0.0.0.0', port=8080)

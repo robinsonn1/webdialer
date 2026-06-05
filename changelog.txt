@@ -1,0 +1,18 @@
+# Changelog
+
+All notable changes to the Twilio Web Dialer Sandbox project will be documented in this file.
+
+## [1.1.0] - 2026-06-05
+### Added
+- **In-Call DTMF Generation Engine**: Keypad buttons detect live call connections and route dual-tone multifrequency signalling streams down active channels using `activeConnection.sendDigits()`.
+- **Live UI Mute/Unmute Feature**: Added dedicated mute control state toggle button mapped onto the device layer audio engine.
+- **Enhanced Session Telemetry Tracking**: Added historical list trace expansion to log and render outbound DTMF entries in real time.
+- **Server Bypass Injection**: Flask server responses now append `"ngrok-skip-browser-warning": "true"` proxy headers directly into the XML compilation pipeline to prevent tunnel lookup failures.
+
+## [1.0.0] - 2026-06-04
+### Added
+- **Initial Stable Sandbox Baseline Release**: Complete end-to-end framework layout architecture utilizing Python Flask and Tailwind CSS browser compilers.
+- **Asynchronous Token Sign-off**: Implemented local credential capability token verification via `/token`.
+- **E.164 Layout Rules Engine**: Live string evaluation interface displaying localized country data formats.
+- **WebRTC Call Line Control**: Interactive dial and disconnect architecture tied directly to standard Twilio software client drivers.
+- **Multi-Zone Clock Blocks**: Header module providing real-time synchronization tracking across PST, CT, and COT timezones.
