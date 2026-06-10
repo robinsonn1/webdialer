@@ -6,19 +6,23 @@
     <title>Compact Twilio Sandbox</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='twilio.min.js') }}"></script>
-    <style>
-        .console-log { font-family: 'Courier New', Courier, monospace; }
-    </style>
+    <style>.console-log { font-family: 'Courier New', Courier, monospace; }</style>
 </head>
 <body class="bg-slate-900 text-slate-100 h-screen overflow-hidden flex flex-col justify-between font-sans text-xs">
 
     <header class="bg-slate-950 border-b border-slate-800 px-4 py-2 flex justify-between items-center shrink-0">
         <div>
             <h1 class="text-base font-bold text-sky-400 tracking-tight flex items-center gap-1.5">
-                Twilio Web Dialer <span class="text-[10px] px-1.5 py-0.2 bg-slate-800 text-slate-400 rounded border border-slate-700 font-normal">Sandbox v1.1</span>
+                Twilio Web Dialer
+                <span class="text-[10px] px-1.5 py-0.2 bg-slate-800 text-slate-400 rounded border border-slate-700 font-normal">Sandbox v1.3</span>
             </h1>
         </div>
-        <div class="flex gap-4 text-[11px] font-mono">
+        <div class="flex gap-3 items-center text-[11px] font-mono">
+            <!-- HubSpot connection badge -->
+            <button onclick="testHubSpot()" id="hs-badge"
+                class="px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer bg-slate-800 border-slate-600 text-slate-400 hover:border-orange-500 transition-colors">
+                🔌 HubSpot: untested
+            </button>
             <div class="bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800">
                 <span class="text-slate-500 text-[10px]">PST:</span> <span id="clock-pst" class="text-amber-400 font-bold">--:--:--</span>
             </div>
@@ -32,7 +36,7 @@
     </header>
 
     <main class="flex-grow p-3 grid grid-cols-12 gap-3 min-h-0 overflow-hidden">
-        
+
         <section class="col-span-4 bg-slate-800/80 p-3 rounded-lg border border-slate-700/60 flex flex-col justify-between min-h-0">
             <div>
                 <div class="bg-slate-950 p-2 rounded border border-slate-900 mb-2.5">
@@ -49,15 +53,12 @@
                     <button onclick="pressKey('1')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">1</button>
                     <button onclick="pressKey('2')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">2</button>
                     <button onclick="pressKey('3')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">3</button>
-                    
                     <button onclick="pressKey('4')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">4</button>
                     <button onclick="pressKey('5')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">5</button>
                     <button onclick="pressKey('6')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">6</button>
-                    
                     <button onclick="pressKey('7')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">7</button>
                     <button onclick="pressKey('8')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">8</button>
                     <button onclick="pressKey('9')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">9</button>
-                    
                     <button onclick="pressKey('*')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">*</button>
                     <button onclick="pressKey('0')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">0</button>
                     <button onclick="pressKey('#')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">#</button>
@@ -70,12 +71,8 @@
                 <div class="border-t border-slate-700/50 pt-2">
                     <span class="block text-[9px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Presets</span>
                     <div class="grid grid-cols-2 gap-1.5">
-                        <button onclick="setTestNumber('+18884368828')" class="text-[10px] bg-slate-700 hover:bg-slate-600 py-1 px-1.5 rounded text-center truncate cursor-pointer">
-                            Twilio Echo (+1)
-                        </button>
-                        <button onclick="setTestNumber('+442074139100')" class="text-[10px] bg-slate-700 hover:bg-slate-600 py-1 px-1.5 rounded text-center truncate cursor-pointer">
-                            UK Outbound (+44)
-                        </button>
+                        <button onclick="setTestNumber('+18884368828')" class="text-[10px] bg-slate-700 hover:bg-slate-600 py-1 px-1.5 rounded text-center truncate cursor-pointer">Twilio Echo (+1)</button>
+                        <button onclick="setTestNumber('+442074139100')" class="text-[10px] bg-slate-700 hover:bg-slate-600 py-1 px-1.5 rounded text-center truncate cursor-pointer">UK Outbound (+44)</button>
                     </div>
                 </div>
             </div>
@@ -86,15 +83,9 @@
                     <span id="call-status" class="font-bold text-amber-400 uppercase tracking-wide">Verifying Local Assets...</span>
                 </div>
                 <div class="grid grid-cols-3 gap-1.5">
-                    <button id="btn-dial" disabled onclick="startTestCall()" class="bg-emerald-600 opacity-40 text-white font-bold py-2 rounded cursor-pointer transition-all">
-                        Dial
-                    </button>
-                    <button id="btn-mute" disabled onclick="toggleMuteState()" class="bg-slate-600 opacity-40 cursor-not-allowed text-white font-bold py-2 rounded">
-                        Mute
-                    </button>
-                    <button id="btn-hangup" onclick="endTestCall()" disabled class="bg-rose-700 opacity-40 cursor-not-allowed text-white font-bold py-2 rounded">
-                        Hang Up
-                    </button>
+                    <button id="btn-dial" disabled onclick="startTestCall()" class="bg-emerald-600 opacity-40 text-white font-bold py-2 rounded cursor-pointer transition-all">Dial</button>
+                    <button id="btn-mute" disabled onclick="toggleMuteState()" class="bg-slate-600 opacity-40 cursor-not-allowed text-white font-bold py-2 rounded">Mute</button>
+                    <button id="btn-hangup" onclick="endTestCall()" disabled class="bg-rose-700 opacity-40 cursor-not-allowed text-white font-bold py-2 rounded">Hang Up</button>
                 </div>
             </div>
         </section>
@@ -120,10 +111,12 @@
                                 <th class="px-2 py-1.5">Target Info</th>
                                 <th class="px-2 py-1.5">Duration</th>
                                 <th class="px-2 py-1.5">Log Status</th>
+                                <th class="px-2 py-1.5 text-orange-400">HubSpot</th>
+                                <th class="px-2 py-1.5 text-orange-400">Contact ID</th>
                             </tr>
                         </thead>
                         <tbody id="history-table-body" class="divide-y divide-slate-800/50 font-mono">
-                            <tr id="empty-row"><td colspan="4" class="px-2 py-4 text-center text-slate-600">No telemetry recorded in session.</td></tr>
+                            <tr id="empty-row"><td colspan="6" class="px-2 py-4 text-center text-slate-600">No telemetry recorded in session.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -145,65 +138,84 @@
         let isNumberValidE164 = false;
         let isCallActive = false;
 
+        // ── Clocks ──────────────────────────────────────────────────────────────
         function runClocks() {
             const now = new Date();
-            const timeConfig = (zone) => ({ timeZone: zone, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-            document.getElementById('clock-pst').innerText = new Intl.DateTimeFormat('en-US', timeConfig('America/Los_Angeles')).format(now) + " PST";
-            document.getElementById('clock-ct').innerText = new Intl.DateTimeFormat('en-US', timeConfig('America/Chicago')).format(now) + " CT";
-            document.getElementById('clock-bog').innerText = new Intl.DateTimeFormat('en-US', timeConfig('America/Bogota')).format(now) + " COT";
+            const tc  = (z) => ({ timeZone: z, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            document.getElementById('clock-pst').innerText = new Intl.DateTimeFormat('en-US', tc('America/Los_Angeles')).format(now) + " PST";
+            document.getElementById('clock-ct').innerText  = new Intl.DateTimeFormat('en-US', tc('America/Chicago')).format(now)     + " CT";
+            document.getElementById('clock-bog').innerText = new Intl.DateTimeFormat('en-US', tc('America/Bogota')).format(now)      + " COT";
         }
         setInterval(runClocks, 1000);
         runClocks();
 
-        window.onload = () => { 
-            let checkAttempts = 0;
-            function waitForLocalSDK() {
-                if (typeof Twilio !== 'undefined') {
-                    logToConsole("[SYSTEM] Local script loaded successfully. Establishing capability token context...");
-                    initTwilioDevice();
-                    pullBackendLogs(); 
+        // ── HubSpot connection test ──────────────────────────────────────────────
+        async function testHubSpot() {
+            const badge = document.getElementById('hs-badge');
+            badge.innerText = "🔌 HubSpot: testing…";
+            badge.className = "px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer bg-slate-800 border-amber-500 text-amber-400 animate-pulse";
+            logToConsole("[HUBSPOT] Running connection smoke-test via /hs-debug...");
+            try {
+                const res  = await fetch('/hs-debug');
+                const data = await res.json();
+                if (data.ok) {
+                    badge.innerText = "✅ HubSpot: connected";
+                    badge.className = "px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer bg-slate-800 border-emerald-500 text-emerald-400";
+                    logToConsole(`[HUBSPOT] Connection OK — ${data.message}`, "success");
                 } else {
-                    checkAttempts++;
-                    if (checkAttempts < 30) { 
-                        setTimeout(waitForLocalSDK, 100);
-                    } else {
-                        logToConsole("[FATAL] Local asset file missing. Please ensure /static/twilio.min.js exists.", "error");
-                    }
+                    badge.innerText = "❌ HubSpot: error";
+                    badge.className = "px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer bg-slate-800 border-rose-500 text-rose-400";
+                    logToConsole(`[HUBSPOT] Connection FAILED: ${data.error}`, "error");
+                }
+            } catch (e) {
+                badge.innerText = "❌ HubSpot: unreachable";
+                badge.className = "px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer bg-slate-800 border-rose-500 text-rose-400";
+                logToConsole(`[HUBSPOT] /hs-debug fetch failed: ${e.message}`, "error");
+            }
+        }
+
+        // ── Init ────────────────────────────────────────────────────────────────
+        window.onload = () => {
+            let attempts = 0;
+            function waitForSDK() {
+                if (typeof Twilio !== 'undefined') {
+                    logToConsole("[SYSTEM] Local script loaded. Establishing capability token context...");
+                    initTwilioDevice();
+                    pullBackendLogs();
+                } else {
+                    if (++attempts < 30) setTimeout(waitForSDK, 100);
+                    else logToConsole("[FATAL] twilio.min.js missing from /static.", "error");
                 }
             }
-            waitForLocalSDK();
+            waitForSDK();
         }
 
         async function initTwilioDevice() {
-            logToConsole("[DEVICE] Querying server app instance for generation parameters...");
+            logToConsole("[DEVICE] Querying server for token...");
             try {
-                const response = await fetch('/token');
-                const data = await response.json();
+                const res  = await fetch('/token');
+                const data = await res.json();
                 if (data.error) throw new Error(data.error);
 
                 device = new Twilio.Device(data.token, { logLevel: 1, edge: 'ashburn' });
-
                 device.on('registered', () => {
-                    logToConsole("[DEVICE] Authentication complete. Audio engine operational.", "success");
+                    logToConsole("[DEVICE] Auth complete. Audio engine operational.", "success");
                     document.getElementById('call-status').innerText = "Ready";
                     document.getElementById('btn-dial').disabled = false;
                     document.getElementById('btn-dial').classList.remove('opacity-40');
                 });
-
-                device.on('error', (error) => {
-                    logToConsole(`[DEVICE EXCEPTION] SDK Error: ${error.message}`, "error");
-                });
-
+                device.on('error', (e) => logToConsole(`[DEVICE] SDK Error: ${e.message}`, "error"));
                 device.register();
             } catch (err) {
-                logToConsole(`[FATAL] Capability validation pipeline broken: ${err.message}`, "error");
+                logToConsole(`[FATAL] Token pipeline broken: ${err.message}`, "error");
             }
         }
 
+        // ── Keypad ──────────────────────────────────────────────────────────────
         function pressKey(char) {
             if (!isCallActive) {
                 const el = document.getElementById('phone-number');
-                if (el.value === "" && !['+', '*', '#'].includes(char)) el.value = "+";
+                if (el.value === "" && !['+','*','#'].includes(char)) el.value = "+";
                 el.value += char;
                 validateAndLookupNumber();
             } else {
@@ -212,101 +224,69 @@
         }
 
         async function transmitLiveDTMF(char) {
-            if (activeConnection) {
-                // Core fix: using the active call instance to pipe DTMF audio directly
-                activeConnection.sendDigits(char);
-                logToConsole(`[DTMF] Digit Tone [ ${char} ] streamed down active connection trunk.`);
-                
-                if (localCallHistory.length > 0 && localCallHistory[0].status === "Active") {
-                    localCallHistory[0].dtmf.push(char);
-                    renderTable();
-                }
-
-                await fetch('/dtmf-log', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ digit: char })
-                });
+            if (!activeConnection) return;
+            activeConnection.sendDigits(char);
+            logToConsole(`[DTMF] Digit [ ${char} ] sent.`);
+            if (localCallHistory.length > 0 && localCallHistory[0].status === "Active") {
+                localCallHistory[0].dtmf.push(char);
+                renderTable();
             }
+            await fetch('/dtmf-log', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ digit: char })
+            });
         }
 
         function toggleMuteState() {
             if (!activeConnection) return;
-            const currentMute = activeConnection.isMuted();
-            activeConnection.mute(!currentMute);
-            
+            const muted = activeConnection.isMuted();
+            activeConnection.mute(!muted);
             const btn = document.getElementById('btn-mute');
-            if (!currentMute) {
-                btn.innerText = "Unmute";
-                btn.classList.replace('bg-slate-600', 'bg-sky-600');
-                logToConsole("[AUDIO] Microphone channel muted locally.");
-            } else {
-                btn.innerText = "Mute";
-                btn.classList.replace('bg-sky-600', 'bg-slate-600');
-                logToConsole("[AUDIO] Microphone channel live unmuted.");
-            }
+            if (!muted) { btn.innerText = "Unmute"; btn.classList.replace('bg-slate-600','bg-sky-600'); logToConsole("[AUDIO] Muted."); }
+            else         { btn.innerText = "Mute";   btn.classList.replace('bg-sky-600','bg-slate-600'); logToConsole("[AUDIO] Unmuted."); }
         }
 
         function clearInputField() {
-            if (!isCallActive) {
-                document.getElementById('phone-number').value = "";
-                validateAndLookupNumber();
-                logToConsole("[UI] Target field cleared.");
-            }
+            if (!isCallActive) { document.getElementById('phone-number').value = ""; validateAndLookupNumber(); }
         }
-
         function setTestNumber(num) {
-            if (!isCallActive) {
-                document.getElementById('phone-number').value = num;
-                validateAndLookupNumber();
-                logToConsole(`[UI] Loaded Preset: ${num}`);
-            }
+            if (!isCallActive) { document.getElementById('phone-number').value = num; validateAndLookupNumber(); logToConsole(`[UI] Preset loaded: ${num}`); }
         }
 
         function validateAndLookupNumber() {
             const input = document.getElementById('phone-number').value.trim();
-            const msg = document.getElementById('validation-msg');
-            const meta = document.getElementById('lookup-meta');
-            
-            if (!input) {
-                msg.innerText = "Awaiting international E.164 input...";
-                msg.className = "text-[9px] text-slate-500 font-mono mt-0.5";
-                meta.innerText = "Country: Unknown";
-                isNumberValidE164 = false;
-                return;
-            }
-
+            const msg   = document.getElementById('validation-msg');
+            const meta  = document.getElementById('lookup-meta');
+            if (!input) { msg.innerText = "Awaiting international E.164 input..."; msg.className = "text-[9px] text-slate-500 font-mono mt-0.5"; meta.innerText = "Country: Unknown"; isNumberValidE164 = false; return; }
             isNumberValidE164 = /^\+[1-9]\d{1,14}$/.test(input);
-            msg.innerText = isNumberValidE164 ? "✓ Format Compliant (E.164)" : "✗ Invalid Structure Format";
+            msg.innerText = isNumberValidE164 ? "✓ Format Compliant (E.164)" : "✗ Invalid Structure";
             msg.className = isNumberValidE164 ? "text-[9px] text-emerald-400 font-bold font-mono mt-0.5" : "text-[9px] text-rose-400 font-mono mt-0.5";
-
-            let country = "Unknown Plan";
-            if (input.startsWith("+1")) country = "USA / Canada (+1)";
+            let country = "International";
+            if      (input.startsWith("+1"))  country = "USA / Canada (+1)";
             else if (input.startsWith("+44")) country = "United Kingdom (+44)";
             else if (input.startsWith("+52")) country = "Mexico (+52)";
             else if (input.startsWith("+57")) country = "Colombia (+57)";
-            else if (input.startsWith("+")) country = "International Rule";
             meta.innerText = `Country: ${country}`;
         }
 
+        // ── Console ─────────────────────────────────────────────────────────────
         function logToConsole(message, type = 'info') {
-            const consoleEl = document.getElementById('debug-console');
+            const el   = document.getElementById('debug-console');
             const line = document.createElement('div');
-            const stamp = new Date().toLocaleTimeString('en-US', { hour12: false });
-            
-            line.innerText = `[${stamp}] ${message}`;
-            if (type === 'error') line.classList.add('text-rose-400');
-            if (type === 'success') line.classList.add('text-emerald-400');
-            
-            consoleEl.appendChild(line);
-            consoleEl.scrollTop = consoleEl.scrollHeight;
+            const ts   = new Date().toLocaleTimeString('en-US', { hour12: false });
+            line.innerText = `[${ts}] ${message}`;
+            if (type === 'error')    line.classList.add('text-rose-400');
+            if (type === 'success')  line.classList.add('text-emerald-400');
+            if (type === 'hubspot')  line.classList.add('text-orange-400');
+            el.appendChild(line);
+            el.scrollTop = el.scrollHeight;
         }
-
         function clearLogs() {
             document.getElementById('debug-console').innerHTML = '<div class="text-slate-500">[SYSTEM] Logs flushed.</div>';
         }
 
-        // Core fix: assigning listeners directly onto the returned synchronous Call instance
+        // ── Call flow ───────────────────────────────────────────────────────────
         async function startTestCall() {
             const num = document.getElementById('phone-number').value;
             if (!num || !device) return;
@@ -316,120 +296,156 @@
             document.getElementById('btn-dial').disabled = true;
             document.getElementById('btn-dial').classList.add('opacity-40');
 
-            logToConsole(`[WebRTC Engine] Opening signaling tunnel to Twilio framework gateway for: ${num}`);
-            
+            logToConsole(`[WebRTC] Opening tunnel for: ${num}`);
+            logToConsole(`[HUBSPOT] Will sync contact after /voice webhook fires…`, "hubspot");
+
             try {
-                // Capture the returned Call object synchronously
                 activeConnection = await device.connect({ params: { To: num } });
-                
-                // Bind listeners straight to this call instance
+
                 activeConnection.on('accept', () => {
                     isCallActive = true;
-                    logToConsole("[SIGNAL] Remote connection channel opened safely. Line active.", "success");
-                    
+                    logToConsole("[SIGNAL] Line active.", "success");
+
                     document.getElementById('call-status').innerText = "In Flight";
                     document.getElementById('call-status').className = "font-bold text-emerald-400 uppercase tracking-wide";
                     document.getElementById('btn-hangup').disabled = false;
-                    document.getElementById('btn-hangup').classList.remove('opacity-40', 'cursor-not-allowed');
-                    
+                    document.getElementById('btn-hangup').classList.remove('opacity-40','cursor-not-allowed');
                     document.getElementById('btn-mute').disabled = false;
-                    document.getElementById('btn-mute').classList.remove('opacity-40', 'cursor-not-allowed');
+                    document.getElementById('btn-mute').classList.remove('opacity-40','cursor-not-allowed');
 
                     activeCallSeconds = 0;
-                    const ctTimestamp = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', hour12: false }).split(', ')[1];
-                    localCallHistory.unshift({ timestamp: ctTimestamp, target: num, duration: "0s", status: "Active", dtmf: [] });
+                    const ctTS = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', hour12: false }).split(', ')[1];
+                    localCallHistory.unshift({ timestamp: ctTS, target: num, duration: "0s", status: "Active", dtmf: [], hs_status: "pending…", hs_contact_id: null });
                     renderTable();
+
+                    // Poll /logs every 2s until hs_status resolves (max 10 attempts)
+                    let pollCount = 0;
+                    const pollHS = setInterval(async () => {
+                        pollCount++;
+                        await pullBackendLogs();
+                        const resolved = localCallHistory[0]?.hs_status &&
+                                         !['pending…','syncing…'].includes(localCallHistory[0].hs_status);
+                        if (resolved || pollCount >= 10) clearInterval(pollHS);
+                    }, 2000);
 
                     liveTimerInterval = setInterval(() => {
                         activeCallSeconds++;
-                        localCallHistory[0].duration = `${activeCallSeconds}s`;
+                        if (localCallHistory[0]) localCallHistory[0].duration = `${activeCallSeconds}s`;
                         renderTable();
                     }, 1000);
                 });
 
                 activeConnection.on('disconnect', () => {
-                    logToConsole("[SIGNAL] Connection torn down cleanly by remote endpoint target session.");
+                    logToConsole("[SIGNAL] Call disconnected.");
                     resetCallStateUI();
                 });
-                
+
             } catch (err) {
-                logToConsole(`[SIGNAL ABORT] Call configuration error: ${err.message}`, "error");
+                logToConsole(`[SIGNAL ABORT] ${err.message}`, "error");
                 resetCallStateUI();
             }
         }
 
         function endTestCall() {
-            if (activeConnection) {
-                logToConsole("[DISCONNECT] Terminating interface line hook connection structure...");
-                activeConnection.disconnect(); 
-            }
+            if (activeConnection) { logToConsole("[DISCONNECT] Hanging up…"); activeConnection.disconnect(); }
             resetCallStateUI();
         }
 
         function resetCallStateUI() {
             clearInterval(liveTimerInterval);
             isCallActive = false;
-            
-            if (localCallHistory.length > 0 && localCallHistory[0].status === "Active") {
+            if (localCallHistory.length > 0 && localCallHistory[0].status === "Active")
                 localCallHistory[0].status = "Finished";
-            }
 
             document.getElementById('call-status').innerText = "Ready";
             document.getElementById('call-status').className = "font-bold text-emerald-400 uppercase tracking-wide";
-            
             document.getElementById('btn-dial').disabled = false;
             document.getElementById('btn-dial').classList.remove('opacity-40');
-            
             document.getElementById('btn-hangup').disabled = true;
-            document.getElementById('btn-hangup').classList.add('opacity-40', 'cursor-not-allowed');
+            document.getElementById('btn-hangup').classList.add('opacity-40','cursor-not-allowed');
 
             const btnMute = document.getElementById('btn-mute');
-            btnMute.innerText = "Mute";
-            btnMute.disabled = true;
+            btnMute.innerText = "Mute"; btnMute.disabled = true;
             btnMute.className = "bg-slate-600 opacity-40 cursor-not-allowed text-white font-bold py-2 rounded";
 
             renderTable();
-            pullBackendLogs(); 
+            pullBackendLogs();
         }
 
+        // ── Sync backend logs → local history ───────────────────────────────────
         async function pullBackendLogs() {
             try {
-                const res = await fetch('/logs');
-                if (res.ok) {
-                    const data = await res.json();
-                    logToConsole(`[SYNC] Sync trace: ${data.length} items verified from Flask server memory list repository.`);
-                }
-            } catch(e) {
-                console.error("Historical trace log synchronization tracking failure:", e);
+                const res  = await fetch('/logs');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                logToConsole(`[SYNC] ${data.length} server record(s) fetched.`);
+
+                // Merge server fields into local history by phone number (most recent match)
+                data.forEach(srv => {
+                    // find the most recent local entry for this number
+                    const local = localCallHistory.find(l => l.target === srv.to);
+                    if (local) {
+                        const prevStatus = local.hs_status;
+                        local.hs_status     = srv.hs_status     ?? local.hs_status;
+                        local.hs_contact_id = srv.hs_contact_id ?? local.hs_contact_id;
+
+                        // Print HubSpot result to console the first time it resolves
+                        if (prevStatus !== local.hs_status && local.hs_status !== 'pending…') {
+                            const isErr = local.hs_status.startsWith('error') || local.hs_status === 'no-token';
+                            logToConsole(`[HUBSPOT] ${srv.to} → ${local.hs_status}${local.hs_contact_id ? ' (ID: ' + local.hs_contact_id + ')' : ''}`, isErr ? 'error' : 'hubspot');
+                            if (srv.hs_log) logToConsole(`[HUBSPOT] Detail: ${srv.hs_log}`, isErr ? 'error' : 'hubspot');
+                        }
+                    }
+                });
+
+                renderTable();
+            } catch (e) {
+                console.error("Backend log sync failed:", e);
             }
         }
 
+        // ── Render table ────────────────────────────────────────────────────────
         function renderTable() {
             const tbody = document.getElementById('history-table-body');
             tbody.innerHTML = "";
 
-            if(localCallHistory.length === 0) {
-                tbody.innerHTML = `<tr id="empty-row"><td colspan="4" class="px-2 py-4 text-center text-slate-600">No telemetry recorded in session.</td></tr>`;
+            if (localCallHistory.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="px-2 py-4 text-center text-slate-600">No telemetry recorded in session.</td></tr>`;
                 return;
             }
 
-            localCallHistory.forEach(item => {
+            localCallHistory.slice(0, 10).forEach(item => {
                 const tr = document.createElement('tr');
                 tr.className = "hover:bg-slate-800/30 border-b border-slate-900/50 text-[11px]";
+
                 const statusStyle = item.status === "Active" ? "text-emerald-400 font-bold animate-pulse" : "text-slate-500";
-                
-                const dtmfSection = item.dtmf && item.dtmf.length > 0 
-                    ? `<div class="text-[9px] text-amber-400 font-sans mt-0.5">DTMF Sent: [ ${item.dtmf.join(', ')} ]</div>` 
-                    : '';
+
+                const dtmfSection = item.dtmf?.length > 0
+                    ? `<div class="text-[9px] text-amber-400 mt-0.5">DTMF: [ ${item.dtmf.join(', ')} ]</div>` : '';
+
+                // HubSpot status color
+                const hs = (item.hs_status || "").toLowerCase();
+                let hsColor = "text-slate-400";
+                if      (hs === "created")             hsColor = "text-emerald-400 font-bold";
+                else if (hs === "existing")            hsColor = "text-sky-400 font-bold";
+                else if (hs.startsWith("error"))       hsColor = "text-rose-400 font-bold";
+                else if (hs === "no-token")            hsColor = "text-rose-400";
+                else if (hs.includes("pending") || hs.includes("syncing")) hsColor = "text-amber-400 animate-pulse";
+
+                const hsContactId = item.hs_contact_id
+                    ? `<a href="https://app.hubspot.com/contacts/${item.hs_contact_id}"
+                          target="_blank"
+                          class="text-orange-400 underline hover:text-orange-300">${item.hs_contact_id}</a>`
+                    : `<span class="text-slate-600">—</span>`;
 
                 tr.innerHTML = `
                     <td class="px-2 py-1.5 text-slate-400">${item.timestamp}</td>
-                    <td class="px-2 py-1.5 text-sky-400 font-bold tracking-wide">
-                        ${item.target}
-                        ${dtmfSection}
-                    </td>
+                    <td class="px-2 py-1.5 text-sky-400 font-bold">${item.target}${dtmfSection}</td>
                     <td class="px-2 py-1.5 text-amber-300 font-semibold">${item.duration}</td>
                     <td class="px-2 py-1.5 ${statusStyle}">${item.status}</td>
+                    <td class="px-2 py-1.5 ${hsColor} uppercase tracking-wide">${item.hs_status || '—'}</td>
+                    <td class="px-2 py-1.5">${hsContactId}</td>
                 `;
                 tbody.appendChild(tr);
             });
