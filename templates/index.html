@@ -1,122 +1,347 @@
 <!DOCTYPE html>
+<!--
+  Twilio Web Dialer Sandbox v1.4
+  Author: Robinson Navarro
+  Repository: https://github.com/robinsonn1/webdialer
+  Built with Python Flask + Twilio Voice WebRTC SDK v2.x
+-->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Compact Twilio Sandbox</title>
+    <meta name="author" content="Robinson Navarro">
+    <title>Twilio Web Dialer · Robinson Navarro</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <script type="text/javascript" src="{{ url_for('static', filename='twilio.min.js') }}"></script>
-    <style>.console-log { font-family: 'Courier New', Courier, monospace; }</style>
-</head>
-<body class="bg-slate-900 text-slate-100 h-screen overflow-hidden flex flex-col justify-between font-sans text-xs">
 
-    <header class="bg-slate-950 border-b border-slate-800 px-4 py-2 flex justify-between items-center shrink-0">
-        <div>
-            <h1 class="text-base font-bold text-sky-400 tracking-tight flex items-center gap-1.5">
+    <style>
+        /* ── Base ──────────────────────────────────────────────── */
+        .console-log { font-family: 'Courier New', Courier, monospace; }
+
+        /* ── THEME: dark (default) ─────────────────────────────── */
+        body.theme-dark {
+            --bg-base:        #0f172a;
+            --bg-surface:     #1e293b;
+            --bg-deep:        #020617;
+            --bg-header:      #0a0f1e;
+            --border-subtle:  #334155;
+            --border-faint:   #1e293b;
+            --text-primary:   #f1f5f9;
+            --text-muted:     #64748b;
+            --text-dim:       #334155;
+            --accent-main:    #38bdf8;   /* sky-400 */
+            --accent-call:    #34d399;   /* emerald-400 */
+            --accent-ring:    #fbbf24;   /* amber-400 */
+            --accent-dtmf:    #fbbf24;
+            --accent-hs:      #fb923c;   /* orange-400 */
+            --accent-sid:     #a78bfa;   /* violet-400 */
+            --accent-danger:  #f87171;   /* rose-400 */
+            --btn-dial:       #059669;
+            --btn-hangup:     #be123c;
+            --badge-bg:       #1e293b;
+        }
+
+        /* ── THEME: light ──────────────────────────────────────── */
+        body.theme-light {
+            --bg-base:        #f8fafc;
+            --bg-surface:     #ffffff;
+            --bg-deep:        #f1f5f9;
+            --bg-header:      #ffffff;
+            --border-subtle:  #cbd5e1;
+            --border-faint:   #e2e8f0;
+            --text-primary:   #0f172a;
+            --text-muted:     #64748b;
+            --text-dim:       #cbd5e1;
+            --accent-main:    #0284c7;   /* sky-600 */
+            --accent-call:    #059669;   /* emerald-600 */
+            --accent-ring:    #d97706;   /* amber-600 */
+            --accent-dtmf:    #d97706;
+            --accent-hs:      #ea580c;   /* orange-600 */
+            --accent-sid:     #7c3aed;   /* violet-600 */
+            --accent-danger:  #dc2626;   /* rose-600 */
+            --btn-dial:       #059669;
+            --btn-hangup:     #dc2626;
+            --badge-bg:       #f1f5f9;
+        }
+
+        /* ── THEME: her (warm analog) ──────────────────────────── */
+        body.theme-her {
+            --bg-base:        #2b1d14;   /* deep warm espresso */
+            --bg-surface:     #3d2a1e;   /* warm cedar */
+            --bg-deep:        #1a110c;   /* near-black with red undertone */
+            --bg-header:      #221510;
+            --border-subtle:  #6b3e2a;   /* dusty terracotta border */
+            --border-faint:   #3d2a1e;
+            --text-primary:   #f5e6d8;   /* warm cream */
+            --text-muted:     #a07a60;   /* muted sand */
+            --text-dim:       #5c3a28;
+            --accent-main:    #f4a261;   /* warm amber-orange (Theodore's OS) */
+            --accent-call:    #e07a5f;   /* dusty rose-coral */
+            --accent-ring:    #f4a261;
+            --accent-dtmf:    #f2cc8f;   /* soft gold */
+            --accent-hs:      #e07a5f;
+            --accent-sid:     #c9b8a8;   /* warm grey-taupe */
+            --accent-danger:  #c1440e;   /* deep burnt orange */
+            --btn-dial:       #6b3f2a;
+            --btn-hangup:     #7a1e14;
+            --badge-bg:       #3d2a1e;
+        }
+
+        /* ── Token application ─────────────────────────────────── */
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            transition: background-color 0.25s, color 0.25s;
+        }
+        .surface   { background-color: var(--bg-surface); border-color: var(--border-subtle); }
+        .deep      { background-color: var(--bg-deep); }
+        .header    { background-color: var(--bg-header); border-color: var(--border-subtle); }
+        .t-muted   { color: var(--text-muted); }
+        .t-dim     { color: var(--text-dim); }
+        .t-primary { color: var(--text-primary); }
+        .t-main    { color: var(--accent-main); }
+        .t-call    { color: var(--accent-call); }
+        .t-ring    { color: var(--accent-ring); }
+        .t-hs      { color: var(--accent-hs); }
+        .t-sid     { color: var(--accent-sid); }
+        .t-danger  { color: var(--accent-danger); }
+        .t-dtmf    { color: var(--accent-dtmf); }
+
+        .border-theme  { border-color: var(--border-subtle); }
+        .border-faint  { border-color: var(--border-faint); }
+
+        .btn-key {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-primary);
+            transition: background-color 0.1s, filter 0.1s;
+        }
+        .btn-key:hover  { filter: brightness(1.15); }
+        .btn-key:active { filter: brightness(0.85); }
+
+        .btn-dial-style {
+            background-color: var(--btn-dial);
+            color: #fff;
+        }
+        .btn-hangup-style {
+            background-color: var(--btn-hangup);
+            color: #fff;
+        }
+        .btn-mute-style {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-primary);
+        }
+        .btn-mute-active {
+            background-color: var(--accent-main);
+            color: var(--bg-deep);
+        }
+
+        .input-field {
+            background: transparent;
+            color: var(--text-primary);
+        }
+        .input-field::placeholder { color: var(--text-muted); }
+        .input-field:focus { outline: none; }
+
+        .theme-btn {
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: border-color 0.15s, transform 0.15s;
+            flex-shrink: 0;
+        }
+        .theme-btn:hover   { transform: scale(1.2); }
+        .theme-btn.active  { border-color: var(--text-primary); }
+
+        .hs-badge {
+            background-color: var(--badge-bg);
+            border-color: var(--border-subtle);
+            color: var(--text-muted);
+            transition: border-color 0.2s, color 0.2s;
+        }
+        .hs-badge:hover { border-color: var(--accent-hs); }
+
+        .clock-block {
+            background-color: var(--bg-deep);
+            border: 1px solid var(--border-faint);
+        }
+
+        .status-block {
+            background-color: var(--bg-deep);
+            border: 1px solid var(--border-faint);
+        }
+
+        .preset-btn {
+            background-color: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
+            transition: filter 0.1s;
+        }
+        .preset-btn:hover { filter: brightness(1.1); color: var(--text-primary); }
+
+        .clear-btn {
+            background-color: var(--bg-deep);
+            border: 1px solid var(--border-subtle);
+            color: var(--accent-danger);
+        }
+        .clear-btn:hover { filter: brightness(1.1); }
+
+        table thead { background-color: var(--bg-deep); }
+        table tbody tr { border-bottom: 1px solid var(--border-faint); }
+        table tbody tr:hover { background-color: color-mix(in srgb, var(--bg-surface) 60%, transparent); }
+
+        .console-line-error   { color: var(--accent-danger); }
+        .console-line-success { color: var(--accent-call); }
+        .console-line-hubspot { color: var(--accent-hs); }
+        .console-line-sid     { color: var(--accent-sid); }
+
+        /* "Her" theme subtle texture overlay */
+        body.theme-her::before {
+            content: '';
+            position: fixed; inset: 0;
+            background: radial-gradient(ellipse at 20% 10%, rgba(244,162,97,0.04) 0%, transparent 60%),
+                        radial-gradient(ellipse at 80% 90%, rgba(224,122,95,0.04) 0%, transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        body.theme-her > * { position: relative; z-index: 1; }
+
+        /* Light theme header shadow */
+        body.theme-light .header { box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+    </style>
+</head>
+<body class="theme-dark h-screen overflow-hidden flex flex-col justify-between font-sans text-xs">
+
+    <!-- ── Header ──────────────────────────────────────────────────────────── -->
+    <header class="header border-b px-4 py-2 flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-3">
+            <h1 class="text-base font-bold t-main tracking-tight flex items-center gap-1.5">
                 Twilio Web Dialer
-                <span class="text-[10px] px-1.5 py-0.2 bg-slate-800 text-slate-400 rounded border border-slate-700 font-normal">Sandbox v1.3</span>
+                <span class="text-[10px] px-1.5 surface rounded border font-normal t-muted">Sandbox v1.4</span>
             </h1>
+            <!-- Theme switcher -->
+            <div class="flex items-center gap-1.5 ml-1" title="Switch theme">
+                <button class="theme-btn active" id="tbtn-dark"  onclick="setTheme('dark')"  style="background:#0f172a;" title="Dark"></button>
+                <button class="theme-btn"        id="tbtn-light" onclick="setTheme('light')" style="background:#f8fafc; border-color:#cbd5e1;" title="Light"></button>
+                <button class="theme-btn"        id="tbtn-her"   onclick="setTheme('her')"   style="background: linear-gradient(135deg,#f4a261,#e07a5f,#3d2a1e);" title="Her"></button>
+            </div>
         </div>
         <div class="flex gap-3 items-center text-[11px] font-mono">
-            <!-- HubSpot connection badge -->
             <button onclick="testHubSpot()" id="hs-badge"
-                class="px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer bg-slate-800 border-slate-600 text-slate-400 hover:border-orange-500 transition-colors">
+                class="hs-badge px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer">
                 🔌 HubSpot: untested
             </button>
-            <div class="bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800">
-                <span class="text-slate-500 text-[10px]">PST:</span> <span id="clock-pst" class="text-amber-400 font-bold">--:--:--</span>
+            <div class="clock-block px-2 py-0.5 rounded">
+                <span class="t-muted text-[10px]">PST:</span> <span id="clock-pst" class="t-ring font-bold">--:--:--</span>
             </div>
-            <div class="bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800">
-                <span class="text-slate-500 text-[10px]">CT:</span> <span id="clock-ct" class="text-emerald-400 font-bold">--:--:--</span>
+            <div class="clock-block px-2 py-0.5 rounded">
+                <span class="t-muted text-[10px]">CT:</span> <span id="clock-ct" class="t-call font-bold">--:--:--</span>
             </div>
-            <div class="bg-slate-900/60 px-2 py-0.5 rounded border border-slate-800">
-                <span class="text-slate-500 text-[10px]">BOGOTA:</span> <span id="clock-bog" class="text-sky-400 font-bold">--:--:--</span>
+            <div class="clock-block px-2 py-0.5 rounded">
+                <span class="t-muted text-[10px]">BOGOTA:</span> <span id="clock-bog" class="t-main font-bold">--:--:--</span>
             </div>
         </div>
     </header>
 
+    <!-- ── Main ────────────────────────────────────────────────────────────── -->
     <main class="flex-grow p-3 grid grid-cols-12 gap-3 min-h-0 overflow-hidden">
 
-        <section class="col-span-4 bg-slate-800/80 p-3 rounded-lg border border-slate-700/60 flex flex-col justify-between min-h-0">
+        <!-- Left panel: dialer -->
+        <section class="col-span-4 surface p-3 rounded-lg border flex flex-col justify-between min-h-0">
             <div>
-                <div class="bg-slate-950 p-2 rounded border border-slate-900 mb-2.5">
+                <!-- Phone input -->
+                <div class="deep p-2 rounded border border-faint mb-2.5">
                     <div class="flex justify-between items-center mb-1">
-                        <span class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider">Destination Route</span>
-                        <span id="lookup-meta" class="text-[9px] font-bold text-slate-400">Country: Unknown</span>
+                        <span class="text-[10px] t-muted font-semibold uppercase tracking-wider">Destination Route</span>
+                        <span id="lookup-meta" class="text-[9px] font-bold t-muted">Country: Unknown</span>
                     </div>
                     <input type="tel" id="phone-number" placeholder="+1234567890" oninput="validateAndLookupNumber()"
-                           class="w-full bg-transparent text-sm font-mono tracking-widest text-white focus:outline-none font-bold">
-                    <p id="validation-msg" class="text-[9px] text-slate-500 font-mono mt-0.5 truncate">Awaiting international E.164 input...</p>
+                           class="input-field w-full text-sm font-mono tracking-widest font-bold">
+                    <p id="validation-msg" class="text-[9px] t-muted font-mono mt-0.5 truncate">Awaiting international E.164 input...</p>
                 </div>
 
+                <!-- Keypad -->
                 <div class="grid grid-cols-3 gap-1.5 max-w-[190px] mx-auto mb-2">
-                    <button onclick="pressKey('1')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">1</button>
-                    <button onclick="pressKey('2')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">2</button>
-                    <button onclick="pressKey('3')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">3</button>
-                    <button onclick="pressKey('4')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">4</button>
-                    <button onclick="pressKey('5')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">5</button>
-                    <button onclick="pressKey('6')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">6</button>
-                    <button onclick="pressKey('7')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">7</button>
-                    <button onclick="pressKey('8')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">8</button>
-                    <button onclick="pressKey('9')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">9</button>
-                    <button onclick="pressKey('*')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">*</button>
-                    <button onclick="pressKey('0')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">0</button>
-                    <button onclick="pressKey('#')" class="bg-slate-700/60 hover:bg-slate-600 active:bg-slate-900 font-bold py-2 rounded text-center cursor-pointer transition-colors text-sm">#</button>
+                    <button onclick="pressKey('1')" class="btn-key font-bold py-2 rounded text-center cursor-pointer text-sm">1</button>
+                    <button onclick="pressKey('2')" class="btn-key font-bold py-2 rounded text-center cursor-pointer text-sm">2</button>
+                    <button onclick="pressKey('3')" class="btn-key font-bold py-2 rounded text-center cursor-pointer text-sm">3</button>
+                    <button onclick="pressKey('4')" class="btn-key font-bold py-2 rounded text-center cursor-pointer text-sm">4</button>
+                    <button onclick="pressKey('5')" class="btn-key font-bold py-2 rounded text-center cursor-pointer text-sm">5</button>
+                    <button onclick="pressKey('6')" class="btn-key font-bold py-2 rounded text-center cursor-pointer text-sm">6</button>
+                    <button onclick="pressKey('7')" class="btn-key font-bold py-2 rounded text-center cursor-pointer text-sm">7</button>
+                    <button onclick="pressKey('8')" class="btn-key font-bold py-2 rounded text-center cursor-pointer text-sm">8</button>
+                    <button onclick="pressKey('9')" class="btn-key font-bold py-2 rounded text-center cursor-pointer text-sm">9</button>
+                    <button onclick="pressKey('*')" class="btn-key font-bold py-2 rounded text-center cursor-pointer text-sm">*</button>
+                    <button onclick="pressKey('0')" class="btn-key font-bold py-2 rounded text-center cursor-pointer text-sm">0</button>
+                    <button onclick="pressKey('#')" class="btn-key font-bold py-2 rounded text-center cursor-pointer text-sm">#</button>
                 </div>
 
-                <button onclick="clearInputField()" class="block w-[190px] mx-auto bg-slate-900 border border-slate-700/60 hover:bg-slate-950 text-[9px] text-rose-400 py-1 rounded cursor-pointer mb-3">
+                <button onclick="clearInputField()" class="clear-btn block w-[190px] mx-auto text-[9px] py-1 rounded cursor-pointer mb-3">
                     Clear Input Field
                 </button>
 
-                <div class="border-t border-slate-700/50 pt-2">
-                    <span class="block text-[9px] text-slate-400 font-semibold uppercase tracking-wider mb-1">Presets</span>
+                <!-- Presets -->
+                <div class="border-t border-theme pt-2">
+                    <span class="block text-[9px] t-muted font-semibold uppercase tracking-wider mb-1">Presets</span>
                     <div class="grid grid-cols-2 gap-1.5">
-                        <button onclick="setTestNumber('+18884368828')" class="text-[10px] bg-slate-700 hover:bg-slate-600 py-1 px-1.5 rounded text-center truncate cursor-pointer">Twilio Echo (+1)</button>
-                        <button onclick="setTestNumber('+442074139100')" class="text-[10px] bg-slate-700 hover:bg-slate-600 py-1 px-1.5 rounded text-center truncate cursor-pointer">UK Outbound (+44)</button>
+                        <button onclick="setTestNumber('+18884368828')" class="preset-btn text-[10px] py-1 px-1.5 rounded truncate cursor-pointer">Twilio Echo (+1)</button>
+                        <button onclick="setTestNumber('+442074139100')" class="preset-btn text-[10px] py-1 px-1.5 rounded truncate cursor-pointer">UK Outbound (+44)</button>
                     </div>
                 </div>
             </div>
 
-            <div class="border-t border-slate-700/50 pt-2 space-y-2 shrink-0">
-                <div class="flex items-center justify-between bg-slate-950 p-1.5 rounded text-[10px] border border-slate-900">
-                    <span class="text-slate-500">Status Trunk:</span>
-                    <span id="call-status" class="font-bold text-amber-400 uppercase tracking-wide">Verifying Local Assets...</span>
+            <!-- Status + controls -->
+            <div class="border-t border-theme pt-2 space-y-2 shrink-0">
+                <div class="status-block flex items-center justify-between p-1.5 rounded text-[10px]">
+                    <span class="t-muted">Status:</span>
+                    <span id="call-status" class="font-bold t-ring uppercase tracking-wide">Verifying...</span>
+                </div>
+                <div class="status-block flex items-center justify-between p-1.5 rounded text-[10px]">
+                    <span class="t-muted">Call SID:</span>
+                    <span id="call-sid-display" class="font-mono text-[9px] t-sid truncate max-w-[160px]">—</span>
                 </div>
                 <div class="grid grid-cols-3 gap-1.5">
-                    <button id="btn-dial" disabled onclick="startTestCall()" class="bg-emerald-600 opacity-40 text-white font-bold py-2 rounded cursor-pointer transition-all">Dial</button>
-                    <button id="btn-mute" disabled onclick="toggleMuteState()" class="bg-slate-600 opacity-40 cursor-not-allowed text-white font-bold py-2 rounded">Mute</button>
-                    <button id="btn-hangup" onclick="endTestCall()" disabled class="bg-rose-700 opacity-40 cursor-not-allowed text-white font-bold py-2 rounded">Hang Up</button>
+                    <button id="btn-dial"   disabled onclick="startTestCall()"  class="btn-dial-style opacity-40 font-bold py-2 rounded cursor-pointer transition-all">Dial</button>
+                    <button id="btn-mute"   disabled onclick="toggleMuteState()" class="btn-mute-style opacity-40 cursor-not-allowed font-bold py-2 rounded">Mute</button>
+                    <button id="btn-hangup" disabled onclick="endTestCall()"    class="btn-hangup-style opacity-40 cursor-not-allowed font-bold py-2 rounded">Hang Up</button>
                 </div>
             </div>
         </section>
 
+        <!-- Right panel: telemetry -->
         <section class="col-span-8 grid grid-rows-12 gap-3 min-h-0 overflow-hidden">
-            <div class="row-span-5 bg-slate-800/80 p-3 rounded-lg border border-slate-700/60 flex flex-col min-h-0">
+
+            <!-- Console -->
+            <div class="row-span-5 surface p-3 rounded-lg border flex flex-col min-h-0">
                 <div class="flex justify-between items-center mb-1 shrink-0">
-                    <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Device Telemetry Stream</span>
-                    <button onclick="clearLogs()" class="text-[10px] text-slate-500 hover:text-slate-300 underline cursor-pointer">Clear Logs</button>
+                    <span class="text-[10px] t-muted font-semibold uppercase tracking-wider">Device Telemetry Stream</span>
+                    <button onclick="clearLogs()" class="text-[10px] t-muted hover:t-primary underline cursor-pointer">Clear</button>
                 </div>
-                <div id="debug-console" class="console-log flex-grow bg-slate-950 p-2 rounded overflow-y-auto text-[10px] text-slate-300 space-y-0.5 border border-slate-950">
-                    <div class="text-slate-500">[SYSTEM] Checking internal script initialization state...</div>
+                <div id="debug-console" class="console-log flex-grow deep p-2 rounded overflow-y-auto text-[10px] t-primary space-y-0.5 border border-faint">
+                    <div class="t-muted">[SYSTEM] Checking internal script initialization state...</div>
                 </div>
             </div>
 
-            <div class="row-span-7 bg-slate-800/80 p-3 rounded-lg border border-slate-700/60 flex flex-col min-h-0">
-                <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1.5 shrink-0">Execution Records (Last 10 Roll)</span>
-                <div class="flex-grow overflow-y-auto bg-slate-950 rounded border border-slate-950">
+            <!-- History table -->
+            <div class="row-span-7 surface p-3 rounded-lg border flex flex-col min-h-0">
+                <span class="text-[10px] t-muted font-semibold uppercase tracking-wider mb-1.5 shrink-0">Execution Records (Last 10)</span>
+                <div class="flex-grow overflow-y-auto deep rounded border border-faint">
                     <table class="w-full text-left text-[10px]">
-                        <thead class="bg-slate-900 text-slate-400 uppercase text-[9px] sticky top-0 border-b border-slate-800">
+                        <thead class="t-muted uppercase text-[9px] sticky top-0 border-b border-theme">
                             <tr>
                                 <th class="px-2 py-1.5">Timestamp (CT)</th>
-                                <th class="px-2 py-1.5">Target Info</th>
+                                <th class="px-2 py-1.5">Target</th>
                                 <th class="px-2 py-1.5">Duration</th>
-                                <th class="px-2 py-1.5">Log Status</th>
-                                <th class="px-2 py-1.5 text-orange-400">HubSpot</th>
-                                <th class="px-2 py-1.5 text-orange-400">Contact ID</th>
+                                <th class="px-2 py-1.5">Status</th>
+                                <th class="px-2 py-1.5 t-sid">Call SID</th>
+                                <th class="px-2 py-1.5 t-hs">HubSpot</th>
+                                <th class="px-2 py-1.5 t-hs">Contact ID</th>
                             </tr>
                         </thead>
-                        <tbody id="history-table-body" class="divide-y divide-slate-800/50 font-mono">
-                            <tr id="empty-row"><td colspan="6" class="px-2 py-4 text-center text-slate-600">No telemetry recorded in session.</td></tr>
+                        <tbody id="history-table-body" class="font-mono">
+                            <tr><td colspan="7" class="px-2 py-4 text-center t-dim">No telemetry recorded in session.</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -124,52 +349,68 @@
         </section>
     </main>
 
-    <footer class="bg-slate-950 border-t border-slate-800 px-4 py-1.5 text-[9px] text-slate-600 shrink-0 flex justify-between items-center">
-        <p>&copy; 2026 Telephony Sandbox.</p>
-        <p>Tunnel Mapping State: <span class="text-emerald-500 font-semibold">Active Webhook Ready</span></p>
+    <!-- ── Footer ───────────────────────────────────────────────────────────── -->
+    <footer class="header border-t px-4 py-1.5 text-[9px] t-dim shrink-0 flex justify-between items-center">
+        <p>
+            Built by
+            <a href="https://github.com/robinsonn1/webdialer" target="_blank"
+               class="t-muted hover:t-main underline transition-colors font-semibold">
+                Robinson Navarro
+            </a>
+            &nbsp;·&nbsp; &copy; 2026 Telephony Sandbox
+        </p>
+        <p>Tunnel: <span class="t-call font-semibold">Active</span></p>
     </footer>
 
     <script>
-        let device = null;
-        let activeConnection = null;
-        let localCallHistory = [];
-        let liveTimerInterval = null;
-        let activeCallSeconds = 0;
-        let isNumberValidE164 = false;
-        let isCallActive = false;
+        let device = null, activeConnection = null, localCallHistory = [];
+        let liveTimerInterval = null, activeCallSeconds = 0;
+        let isNumberValidE164 = false, isCallActive = false;
+
+        // ── Theme ───────────────────────────────────────────────────────────────
+        const themes = ['dark','light','her'];
+        function setTheme(t) {
+            document.body.className = document.body.className
+                .replace(/theme-\w+/g, '').trim() + ` theme-${t} h-screen overflow-hidden flex flex-col justify-between font-sans text-xs`;
+            themes.forEach(n => {
+                const btn = document.getElementById(`tbtn-${n}`);
+                if (btn) btn.classList.toggle('active', n === t);
+            });
+            localStorage.setItem('dialer-theme', t);
+        }
+        // Restore saved theme
+        (function() {
+            const saved = localStorage.getItem('dialer-theme');
+            if (saved && themes.includes(saved)) setTheme(saved);
+        })();
 
         // ── Clocks ──────────────────────────────────────────────────────────────
         function runClocks() {
             const now = new Date();
-            const tc  = (z) => ({ timeZone: z, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+            const tc  = z => ({ timeZone: z, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
             document.getElementById('clock-pst').innerText = new Intl.DateTimeFormat('en-US', tc('America/Los_Angeles')).format(now) + " PST";
             document.getElementById('clock-ct').innerText  = new Intl.DateTimeFormat('en-US', tc('America/Chicago')).format(now)     + " CT";
             document.getElementById('clock-bog').innerText = new Intl.DateTimeFormat('en-US', tc('America/Bogota')).format(now)      + " COT";
         }
-        setInterval(runClocks, 1000);
-        runClocks();
+        setInterval(runClocks, 1000); runClocks();
 
-        // ── HubSpot connection test ──────────────────────────────────────────────
+        // ── HubSpot ─────────────────────────────────────────────────────────────
         async function testHubSpot() {
             const badge = document.getElementById('hs-badge');
             badge.innerText = "🔌 HubSpot: testing…";
-            badge.className = "px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer bg-slate-800 border-amber-500 text-amber-400 animate-pulse";
-            logToConsole("[HUBSPOT] Running connection smoke-test via /hs-debug...");
+            logToConsole("[HUBSPOT] Running smoke-test via /hs-debug...");
             try {
                 const res  = await fetch('/hs-debug');
                 const data = await res.json();
                 if (data.ok) {
                     badge.innerText = "✅ HubSpot: connected";
-                    badge.className = "px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer bg-slate-800 border-emerald-500 text-emerald-400";
-                    logToConsole(`[HUBSPOT] Connection OK — ${data.message}`, "success");
+                    logToConsole(`[HUBSPOT] ${data.message}`, "success");
                 } else {
                     badge.innerText = "❌ HubSpot: error";
-                    badge.className = "px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer bg-slate-800 border-rose-500 text-rose-400";
-                    logToConsole(`[HUBSPOT] Connection FAILED: ${data.error}`, "error");
+                    logToConsole(`[HUBSPOT] FAILED: ${data.error}`, "error");
                 }
             } catch (e) {
                 badge.innerText = "❌ HubSpot: unreachable";
-                badge.className = "px-2 py-0.5 rounded border text-[10px] font-bold cursor-pointer bg-slate-800 border-rose-500 text-rose-400";
                 logToConsole(`[HUBSPOT] /hs-debug fetch failed: ${e.message}`, "error");
             }
         }
@@ -179,9 +420,8 @@
             let attempts = 0;
             function waitForSDK() {
                 if (typeof Twilio !== 'undefined') {
-                    logToConsole("[SYSTEM] Local script loaded. Establishing capability token context...");
-                    initTwilioDevice();
-                    pullBackendLogs();
+                    logToConsole("[SYSTEM] SDK loaded. Establishing token context...");
+                    initTwilioDevice(); pullBackendLogs();
                 } else {
                     if (++attempts < 30) setTimeout(waitForSDK, 100);
                     else logToConsole("[FATAL] twilio.min.js missing from /static.", "error");
@@ -196,7 +436,6 @@
                 const res  = await fetch('/token');
                 const data = await res.json();
                 if (data.error) throw new Error(data.error);
-
                 device = new Twilio.Device(data.token, { logLevel: 1, edge: 'ashburn' });
                 device.on('registered', () => {
                     logToConsole("[DEVICE] Auth complete. Audio engine operational.", "success");
@@ -204,7 +443,7 @@
                     document.getElementById('btn-dial').disabled = false;
                     document.getElementById('btn-dial').classList.remove('opacity-40');
                 });
-                device.on('error', (e) => logToConsole(`[DEVICE] SDK Error: ${e.message}`, "error"));
+                device.on('error', e => logToConsole(`[DEVICE] SDK Error: ${e.message}`, "error"));
                 device.register();
             } catch (err) {
                 logToConsole(`[FATAL] Token pipeline broken: ${err.message}`, "error");
@@ -216,11 +455,8 @@
             if (!isCallActive) {
                 const el = document.getElementById('phone-number');
                 if (el.value === "" && !['+','*','#'].includes(char)) el.value = "+";
-                el.value += char;
-                validateAndLookupNumber();
-            } else {
-                transmitLiveDTMF(char);
-            }
+                el.value += char; validateAndLookupNumber();
+            } else { transmitLiveDTMF(char); }
         }
 
         async function transmitLiveDTMF(char) {
@@ -228,14 +464,9 @@
             activeConnection.sendDigits(char);
             logToConsole(`[DTMF] Digit [ ${char} ] sent.`);
             if (localCallHistory.length > 0 && localCallHistory[0].status === "Active") {
-                localCallHistory[0].dtmf.push(char);
-                renderTable();
+                localCallHistory[0].dtmf.push(char); renderTable();
             }
-            await fetch('/dtmf-log', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ digit: char })
-            });
+            await fetch('/dtmf-log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ digit: char }) });
         }
 
         function toggleMuteState() {
@@ -243,8 +474,8 @@
             const muted = activeConnection.isMuted();
             activeConnection.mute(!muted);
             const btn = document.getElementById('btn-mute');
-            if (!muted) { btn.innerText = "Unmute"; btn.classList.replace('bg-slate-600','bg-sky-600'); logToConsole("[AUDIO] Muted."); }
-            else         { btn.innerText = "Mute";   btn.classList.replace('bg-sky-600','bg-slate-600'); logToConsole("[AUDIO] Unmuted."); }
+            if (!muted) { btn.innerText = "Unmute"; btn.classList.add('btn-mute-active'); logToConsole("[AUDIO] Muted."); }
+            else         { btn.innerText = "Mute";   btn.classList.remove('btn-mute-active'); logToConsole("[AUDIO] Unmuted."); }
         }
 
         function clearInputField() {
@@ -258,10 +489,11 @@
             const input = document.getElementById('phone-number').value.trim();
             const msg   = document.getElementById('validation-msg');
             const meta  = document.getElementById('lookup-meta');
-            if (!input) { msg.innerText = "Awaiting international E.164 input..."; msg.className = "text-[9px] text-slate-500 font-mono mt-0.5"; meta.innerText = "Country: Unknown"; isNumberValidE164 = false; return; }
+            if (!input) { msg.innerText = "Awaiting international E.164 input..."; msg.className = "text-[9px] t-muted font-mono mt-0.5"; meta.innerText = "Country: Unknown"; isNumberValidE164 = false; return; }
             isNumberValidE164 = /^\+[1-9]\d{1,14}$/.test(input);
             msg.innerText = isNumberValidE164 ? "✓ Format Compliant (E.164)" : "✗ Invalid Structure";
-            msg.className = isNumberValidE164 ? "text-[9px] text-emerald-400 font-bold font-mono mt-0.5" : "text-[9px] text-rose-400 font-mono mt-0.5";
+            msg.style.color = isNumberValidE164 ? 'var(--accent-call)' : 'var(--accent-danger)';
+            msg.className   = "text-[9px] font-bold font-mono mt-0.5";
             let country = "International";
             if      (input.startsWith("+1"))  country = "USA / Canada (+1)";
             else if (input.startsWith("+44")) country = "United Kingdom (+44)";
@@ -276,14 +508,14 @@
             const line = document.createElement('div');
             const ts   = new Date().toLocaleTimeString('en-US', { hour12: false });
             line.innerText = `[${ts}] ${message}`;
-            if (type === 'error')    line.classList.add('text-rose-400');
-            if (type === 'success')  line.classList.add('text-emerald-400');
-            if (type === 'hubspot')  line.classList.add('text-orange-400');
-            el.appendChild(line);
-            el.scrollTop = el.scrollHeight;
+            if (type === 'error')   line.className = 'console-line-error';
+            if (type === 'success') line.className = 'console-line-success';
+            if (type === 'hubspot') line.className = 'console-line-hubspot';
+            if (type === 'sid')     line.className = 'console-line-sid';
+            el.appendChild(line); el.scrollTop = el.scrollHeight;
         }
         function clearLogs() {
-            document.getElementById('debug-console').innerHTML = '<div class="text-slate-500">[SYSTEM] Logs flushed.</div>';
+            document.getElementById('debug-console').innerHTML = '<div class="t-muted">[SYSTEM] Logs flushed.</div>';
         }
 
         // ── Call flow ───────────────────────────────────────────────────────────
@@ -292,9 +524,10 @@
             if (!num || !device) return;
 
             document.getElementById('call-status').innerText = "Ringing...";
-            document.getElementById('call-status').className = "font-bold text-amber-400 uppercase tracking-wide animate-pulse";
+            document.getElementById('call-status').style.color = 'var(--accent-ring)';
             document.getElementById('btn-dial').disabled = true;
             document.getElementById('btn-dial').classList.add('opacity-40');
+            document.getElementById('call-sid-display').innerText = "pending…";
 
             logToConsole(`[WebRTC] Opening tunnel for: ${num}`);
             logToConsole(`[HUBSPOT] Will sync contact after /voice webhook fires…`, "hubspot");
@@ -302,12 +535,15 @@
             try {
                 activeConnection = await device.connect({ params: { To: num } });
 
-                activeConnection.on('accept', () => {
+                activeConnection.on('accept', (conn) => {
                     isCallActive = true;
+                    const sid = conn?.parameters?.CallSid || activeConnection?.parameters?.CallSid || "—";
+                    logToConsole(`[SID] Call SID assigned: ${sid}`, "sid");
+                    document.getElementById('call-sid-display').innerText = sid;
                     logToConsole("[SIGNAL] Line active.", "success");
 
                     document.getElementById('call-status').innerText = "In Flight";
-                    document.getElementById('call-status').className = "font-bold text-emerald-400 uppercase tracking-wide";
+                    document.getElementById('call-status').style.color = 'var(--accent-call)';
                     document.getElementById('btn-hangup').disabled = false;
                     document.getElementById('btn-hangup').classList.remove('opacity-40','cursor-not-allowed');
                     document.getElementById('btn-mute').disabled = false;
@@ -315,16 +551,14 @@
 
                     activeCallSeconds = 0;
                     const ctTS = new Date().toLocaleString('en-US', { timeZone: 'America/Chicago', hour12: false }).split(', ')[1];
-                    localCallHistory.unshift({ timestamp: ctTS, target: num, duration: "0s", status: "Active", dtmf: [], hs_status: "pending…", hs_contact_id: null });
+                    localCallHistory.unshift({ timestamp: ctTS, target: num, duration: "0s", status: "Active", dtmf: [], call_sid: sid, hs_status: "pending…", hs_contact_id: null });
                     renderTable();
 
-                    // Poll /logs every 2s until hs_status resolves (max 10 attempts)
                     let pollCount = 0;
                     const pollHS = setInterval(async () => {
                         pollCount++;
                         await pullBackendLogs();
-                        const resolved = localCallHistory[0]?.hs_status &&
-                                         !['pending…','syncing…'].includes(localCallHistory[0].hs_status);
+                        const resolved = localCallHistory[0]?.hs_status && !['pending…','syncing…'].includes(localCallHistory[0].hs_status);
                         if (resolved || pollCount >= 10) clearInterval(pollHS);
                     }, 2000);
 
@@ -336,13 +570,10 @@
                 });
 
                 activeConnection.on('disconnect', () => {
-                    logToConsole("[SIGNAL] Call disconnected.");
-                    resetCallStateUI();
+                    logToConsole("[SIGNAL] Call disconnected."); resetCallStateUI();
                 });
-
             } catch (err) {
-                logToConsole(`[SIGNAL ABORT] ${err.message}`, "error");
-                resetCallStateUI();
+                logToConsole(`[SIGNAL ABORT] ${err.message}`, "error"); resetCallStateUI();
             }
         }
 
@@ -358,7 +589,7 @@
                 localCallHistory[0].status = "Finished";
 
             document.getElementById('call-status').innerText = "Ready";
-            document.getElementById('call-status').className = "font-bold text-emerald-400 uppercase tracking-wide";
+            document.getElementById('call-status').style.color = 'var(--accent-call)';
             document.getElementById('btn-dial').disabled = false;
             document.getElementById('btn-dial').classList.remove('opacity-40');
             document.getElementById('btn-hangup').disabled = true;
@@ -366,85 +597,86 @@
 
             const btnMute = document.getElementById('btn-mute');
             btnMute.innerText = "Mute"; btnMute.disabled = true;
-            btnMute.className = "bg-slate-600 opacity-40 cursor-not-allowed text-white font-bold py-2 rounded";
+            btnMute.classList.remove('btn-mute-active');
+            btnMute.classList.add('opacity-40','cursor-not-allowed');
 
-            renderTable();
-            pullBackendLogs();
+            renderTable(); pullBackendLogs();
         }
 
-        // ── Sync backend logs → local history ───────────────────────────────────
+        // ── Sync backend logs ───────────────────────────────────────────────────
         async function pullBackendLogs() {
             try {
                 const res  = await fetch('/logs');
                 if (!res.ok) return;
                 const data = await res.json();
-
                 logToConsole(`[SYNC] ${data.length} server record(s) fetched.`);
 
-                // Merge server fields into local history by phone number (most recent match)
                 data.forEach(srv => {
-                    // find the most recent local entry for this number
                     const local = localCallHistory.find(l => l.target === srv.to);
                     if (local) {
                         const prevStatus = local.hs_status;
+                        if (!local.call_sid || local.call_sid === '—') {
+                            local.call_sid = srv.call_sid || local.call_sid;
+                            if (local.call_sid && local.call_sid !== '—') {
+                                logToConsole(`[SID] Server confirmed SID: ${local.call_sid}`, "sid");
+                                document.getElementById('call-sid-display').innerText = local.call_sid;
+                            }
+                        }
                         local.hs_status     = srv.hs_status     ?? local.hs_status;
                         local.hs_contact_id = srv.hs_contact_id ?? local.hs_contact_id;
-
-                        // Print HubSpot result to console the first time it resolves
                         if (prevStatus !== local.hs_status && local.hs_status !== 'pending…') {
                             const isErr = local.hs_status.startsWith('error') || local.hs_status === 'no-token';
-                            logToConsole(`[HUBSPOT] ${srv.to} → ${local.hs_status}${local.hs_contact_id ? ' (ID: ' + local.hs_contact_id + ')' : ''}`, isErr ? 'error' : 'hubspot');
+                            logToConsole(`[HUBSPOT] ${srv.to} → ${local.hs_status}${local.hs_contact_id ? ' (ID: '+local.hs_contact_id+')' : ''}`, isErr ? 'error' : 'hubspot');
                             if (srv.hs_log) logToConsole(`[HUBSPOT] Detail: ${srv.hs_log}`, isErr ? 'error' : 'hubspot');
                         }
                     }
                 });
-
                 renderTable();
-            } catch (e) {
-                console.error("Backend log sync failed:", e);
-            }
+            } catch (e) { console.error("Backend log sync failed:", e); }
         }
 
         // ── Render table ────────────────────────────────────────────────────────
         function renderTable() {
             const tbody = document.getElementById('history-table-body');
             tbody.innerHTML = "";
-
             if (localCallHistory.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="px-2 py-4 text-center text-slate-600">No telemetry recorded in session.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="px-2 py-4 text-center t-dim">No telemetry recorded in session.</td></tr>`;
                 return;
             }
-
             localCallHistory.slice(0, 10).forEach(item => {
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-800/30 border-b border-slate-900/50 text-[11px]";
-
-                const statusStyle = item.status === "Active" ? "text-emerald-400 font-bold animate-pulse" : "text-slate-500";
 
                 const dtmfSection = item.dtmf?.length > 0
-                    ? `<div class="text-[9px] text-amber-400 mt-0.5">DTMF: [ ${item.dtmf.join(', ')} ]</div>` : '';
+                    ? `<div class="text-[9px] t-dtmf mt-0.5">DTMF: [ ${item.dtmf.join(', ')} ]</div>` : '';
 
-                // HubSpot status color
+                const sid = item.call_sid || '—';
+                const sidCell = sid !== '—'
+                    ? `<span title="${sid}" class="t-sid font-mono cursor-default">${sid.slice(0,18)}…</span>`
+                    : `<span class="t-dim">—</span>`;
+
                 const hs = (item.hs_status || "").toLowerCase();
-                let hsColor = "text-slate-400";
-                if      (hs === "created")             hsColor = "text-emerald-400 font-bold";
-                else if (hs === "existing")            hsColor = "text-sky-400 font-bold";
-                else if (hs.startsWith("error"))       hsColor = "text-rose-400 font-bold";
-                else if (hs === "no-token")            hsColor = "text-rose-400";
-                else if (hs.includes("pending") || hs.includes("syncing")) hsColor = "text-amber-400 animate-pulse";
+                let hsColorStyle = `color:var(--text-muted)`;
+                if      (hs === "created")   hsColorStyle = `color:var(--accent-call);font-weight:700`;
+                else if (hs === "existing")  hsColorStyle = `color:var(--accent-main);font-weight:700`;
+                else if (hs.startsWith("error") || hs === "no-token") hsColorStyle = `color:var(--accent-danger);font-weight:700`;
+                else if (hs.includes("pending") || hs.includes("syncing")) hsColorStyle = `color:var(--accent-ring)`;
+
+                const statusStyle = item.status === "Active"
+                    ? `color:var(--accent-call);font-weight:700`
+                    : `color:var(--text-muted)`;
 
                 const hsContactId = item.hs_contact_id
-                    ? `<a href="https://app.hubspot.com/contacts/${item.hs_contact_id}"
-                          target="_blank"
-                          class="text-orange-400 underline hover:text-orange-300">${item.hs_contact_id}</a>`
-                    : `<span class="text-slate-600">—</span>`;
+                    ? `<a href="https://app.hubspot.com/contacts/${item.hs_contact_id}" target="_blank"
+                          style="color:var(--accent-hs);text-decoration:underline">${item.hs_contact_id}</a>`
+                    : `<span class="t-dim">—</span>`;
 
                 tr.innerHTML = `
-                    <td class="px-2 py-1.5 text-slate-400">${item.timestamp}</td>
-                    <td class="px-2 py-1.5 text-sky-400 font-bold">${item.target}${dtmfSection}</td>
-                    <td class="px-2 py-1.5 text-amber-300 font-semibold">${item.duration}</td>
-                    <td class="px-2 py-1.5 ${statusStyle}">${item.status}</td>
-                    <td class="px-2 py-1.5 ${hsColor} uppercase tracking-wide">${item.hs_status || '—'}</td>
+                    <td class="px-2 py-1.5 t-muted">${item.timestamp}</td>
+                    <td class="px-2 py-1.5 font-bold" style="color:var(--accent-main)">${item.target}${dtmfSection}</td>
+                    <td class="px-2 py-1.5 font-semibold" style="color:var(--accent-ring)">${item.duration}</td>
+                    <td class="px-2 py-1.5" style="${statusStyle}">${item.status}</td>
+                    <td class="px-2 py-1.5">${sidCell}</td>
+                    <td class="px-2 py-1.5 uppercase tracking-wide" style="${hsColorStyle}">${item.hs_status || '—'}</td>
                     <td class="px-2 py-1.5">${hsContactId}</td>
                 `;
                 tbody.appendChild(tr);

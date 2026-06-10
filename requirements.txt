@@ -1,0 +1,4 @@
+flask>=2.3.0
+twilio>=9.0.0
+python-dotenv>=1.0.0
+hubspot-api-client>=8.0.0

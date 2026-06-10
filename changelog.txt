@@ -2,6 +2,18 @@
 
 All notable changes to the Twilio Web Dialer Sandbox project will be documented in this file.
 
+## [1.4.0] - 2026-06-10
+### Added
+- **Call SID Display**: Twilio-assigned Call SID is now captured from the `/voice` webhook (`CallSid` form field) and stored in the server-side call history. The SID is surfaced in three places: the left panel status block (live, updates on call accept), the telemetry table (truncated with full value on hover), and the debug console stream (violet-highlighted `[SID]` log line).
+- **requirements.txt**: Added explicit dependency manifest (`flask`, `twilio`, `python-dotenv`, `hubspot-api-client`) for clean environment setup.
+- **Dual SID Resolution**: Client-side SID is read from `connection.parameters.CallSid` on the `accept` event; server-side SID is backfilled via `/logs` polling if the client value is unavailable — ensuring the SID always resolves regardless of SDK timing.
+
+## [1.3.0] - 2026-06-08
+### Added
+- **HubSpot CRM Integration**: Contacts are automatically created or matched by phone number on every outbound call via the HubSpot API. Contact IDs link directly to the HubSpot contact record in the telemetry table.
+- **HubSpot Connection Badge**: Header badge with smoke-test button hitting `/hs-debug` to verify API token validity before calls are placed.
+- **HubSpot Debug Endpoint**: `/hs-debug` route returns connection health and live contact count.
+
 ## [1.1.0] - 2026-06-05
 ### Added
 - **In-Call DTMF Generation Engine**: Keypad buttons detect live call connections and route dual-tone multifrequency signalling streams down active channels using `activeConnection.sendDigits()`.
